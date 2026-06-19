@@ -55,6 +55,27 @@ pyinstaller --noconfirm MFPortfolioTracker.spec
 
 Outputs the portable exe to `dist\` and the installer to `installer_output\`.
 
+### Cutting a release
+
+**Automated (recommended).** Push a version tag and GitHub Actions builds the
+exe + installer on a Windows runner and publishes the release:
+
+```powershell
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+The [`Build & Release`](.github/workflows/release.yml) workflow attaches both
+binaries to a new Release. (You can also trigger it manually from the Actions
+tab via *Run workflow*.)
+
+**Local one-liner.** Build everything and optionally publish from your machine:
+
+```powershell
+.\release.ps1 -Version 1.0.1            # build only
+.\release.ps1 -Version 1.0.1 -Publish   # build, tag, push, and create the release
+```
+
 ---
 
 ## What it does

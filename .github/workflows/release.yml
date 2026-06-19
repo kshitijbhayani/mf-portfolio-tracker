@@ -1,0 +1,86 @@
+name: Build & Release
+
+# Builds the standalone exe + installer and publishes a GitHub Release
+# whenever a version tag (e.g. v1.0.1) is pushed.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (without leading v), e.g. 1.0.1"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller pillow
+
+      - name: Determine version
+        id: ver
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $v = "${{ github.event.inputs.version }}".TrimStart('v')
+            $tag = "v$v"
+          } else {
+            $tag = "${{ github.ref_name }}"
+            $v = $tag.TrimStart('v')
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "tag=$tag"     >> $env:GITHUB_OUTPUT
+          Write-Host "Building version $v (tag $tag)"
+
+      - name: Generate icon
+        run: python make_icon.py
+
+      - name: Build standalone exe (PyInstaller)
+        run: python -m PyInstaller --noconfirm --clean MFPortfolioTracker.spec
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" installer.iss
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mf-portfolio-tracker-${{ steps.ver.outputs.version }}
+          path: |
+            dist/MF Portfolio Tracker.exe
+            installer_output/MFPortfolioTracker-Setup-${{ steps.ver.outputs.version }}.exe
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.ver.outputs.tag }}" `
+            "installer_output/MFPortfolioTracker-Setup-${{ steps.ver.outputs.version }}.exe" `
+            "dist/MF Portfolio Tracker.exe" `
+            --title "MF Portfolio Tracker ${{ steps.ver.outputs.version }}" `
+            --notes "Automated release built from tag ${{ steps.ver.outputs.tag }}.
+
+          **Install:** download the Setup .exe below and run it. This build is unsigned, so Windows SmartScreen may warn on first run — click **More info -> Run anyway**. On Smart App Control machines, right-click the file -> **Properties -> Unblock** first.
+
+          A portable (no-install) exe is also attached."

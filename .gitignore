@@ -1,0 +1,20 @@
+# Build artifacts
+build/
+dist/
+*.spec.bak
+__pycache__/
+*.pyc
+*.pyo
+
+# Inno Setup output
+installer_output/
+
+# Local data / virtualenvs
+.venv/
+venv/
+*.db
+
+# OS noise
+Thumbs.db
+.DS_Store
+build_log.txt

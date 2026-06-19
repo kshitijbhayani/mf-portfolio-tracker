@@ -1,0 +1,5 @@
+# Runtime dependencies for the CAS import feature.
+# The core app (manual entry, live NAVs, analytics) needs only the Python
+# standard library; these are required to read CAMS/KFintech/NSDL CAS PDFs.
+casparser>=1.2.0
+pymupdf>=1.24
